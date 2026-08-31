@@ -24,9 +24,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Navigation to Search Activity (Bottom Voice Search Button)
+        // Navigation to Search Activity (Bottom Voice Search Button) — auto-launch voice input
         val btnVoiceSearch: ImageButton = findViewById(R.id.btnVoiceSearch)
         btnVoiceSearch.setOnClickListener {
-            startActivity(Intent(this, SearchActivity::class.java))
+            val intent = Intent(this, SearchActivity::class.java).apply {
+                putExtra(SearchActivity.EXTRA_AUTO_START_VOICE, true)
+            }
+            startActivity(intent)
         }
 
         // Navigation to Take Picture Activity (Bottom Add Button)

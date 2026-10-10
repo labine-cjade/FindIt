@@ -16,15 +16,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
 
-        <activity android:name=".SearchActivity" />
-        <activity android:name=".TakePictureActivity" />
+        <activity android:name="com.findit.dashboard.SearchActivity" />
+        <activity android:name="com.findit.dashboard.TakePictureActivity" />
+        <activity android:name="com.findit.dashboard.LoginActivity" />
+        <activity android:name="com.findit.dashboard.SignUpActivity" />
+        <activity android:name="com.findit.dashboard.MainActivity" />
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.findit.dashboard.OnboardingActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

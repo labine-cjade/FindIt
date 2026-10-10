@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.dashboardfindit"
+    namespace = "com.findit.dashboard"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.dashboardfindit"
+        applicationId = "com.findit.dashboard"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -32,6 +32,7 @@ android {
     }
     buildFeatures {
         compose = true
+        viewBinding = true
     }
 }
 
@@ -60,6 +61,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
 
     // Testing Dependencies
     testImplementation(libs.junit)

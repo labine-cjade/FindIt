@@ -140,9 +140,9 @@ class TakePictureActivity : AppCompatActivity() {
                             viewModel.addItem(
                                 DashboardItem(
                                     title = name,
-                                    location = locationText(location),
                                     date = currentTimestamp(),
-                                    photoPath = path,
+                                    photoPath = capturedPhotoPath,
+                                    location = locationText(plain = location), // Keep only one clean location argument
                                     floor = selectedFloor,
                                     audioPath = audioPath
                                 )

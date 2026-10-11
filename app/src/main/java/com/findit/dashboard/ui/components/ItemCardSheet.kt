@@ -80,14 +80,10 @@ fun currentTimestamp(): String =
 private val RecordRed = Color(0xFFD32F2F)
 
 /**
- * Bottom sheet for one item.
- *
- * - ADD: form after taking a photo (button "Save").
- * - DETAILS: read-only view with a playable recorded message and an "Update" button.
- * - UPDATE: the same form, filled with the item (button "Update Item", then a confirm dialog).
- *
- * [initialLocation] is the plain location text (without "Location: ").
- * [onSave] is called with the new name, location and voice message file (or null).
+- Bottom sheet for one item.
+- ADD: form after taking a photo (button "Save").
+- DETAILS: read-only view with a playable recorded message and an "Update" button.
+- UPDATE: the same form, filled with the item (button "Update Item", then a confirm dialog).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,7 +132,6 @@ fun ItemCardSheet(
     fun startRecording() {
         recorder.stopPlaying()
         isPlaying = false
-        // A new recording replaces one that was recorded earlier in this same sheet.
         newAudioPath?.let { File(it).delete() }
         newAudioPath = null
         val file = File(context.filesDir, "message_${System.currentTimeMillis()}.m4a")
@@ -198,7 +193,6 @@ fun ItemCardSheet(
 
     fun doSave() {
         saved = true
-        // If the message was replaced, the old file is not needed anymore.
         if (audioPath != initialAudioPath) initialAudioPath?.let { File(it).delete() }
         onSave(name.trim(), location.trim(), audioPath)
     }
@@ -251,7 +245,7 @@ fun ItemCardSheet(
                 )
             }
 
-            // Photo (with the "Update Photo" badge while updating)
+            // Photo
             Box(
                 modifier = Modifier
                     .padding(top = 16.dp)
@@ -350,7 +344,6 @@ fun ItemCardSheet(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 SheetButton(text = "Update") {
-                    // See Details -> Update: switch the same sheet to the editable form
                     recorder.stopPlaying()
                     isPlaying = false
                     mode = CardMode.UPDATE
@@ -380,6 +373,7 @@ fun ItemCardSheet(
                         .fillMaxWidth()
                 )
 
+                // Location field + Voice input mic button side-by-side
                 Text(
                     text = "Location",
                     color = Color.Black,
@@ -450,7 +444,6 @@ fun ItemCardSheet(
                             )
                         }
                     }
-                    // Play the recorded message
                     CircleIconButton(
                         iconRes = if (isPlaying) android.R.drawable.ic_media_pause
                         else android.R.drawable.ic_media_play,
@@ -462,7 +455,6 @@ fun ItemCardSheet(
                         enabled = audioPath != null && !isRecording
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    // Record button: mic when idle, red stop square while recording
                     if (isRecording) {
                         Box(
                             modifier = Modifier
@@ -523,7 +515,7 @@ private fun SheetButton(text: String, onClick: () -> Unit) {
     }
 }
 
-/** Small bars that look like a sound wave. The same file always gets the same bars. */
+/** Small bars that look like a sound wave. */
 @Composable
 private fun WaveformBars(seed: Int, barCount: Int) {
     val heights = remember(seed, barCount) {
@@ -545,7 +537,7 @@ private fun WaveformBars(seed: Int, barCount: Int) {
     }
 }
 
-/** "Do you want to save changes?" shown before an update is saved. */
+/** Confirmation dialog shown before an update is saved. */
 @Composable
 private fun ConfirmChangesDialog(onNo: () -> Unit, onYes: () -> Unit) {
     Dialog(onDismissRequest = onNo) {

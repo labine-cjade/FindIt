@@ -1,274 +1,269 @@
 package com.findit.dashboard
 
-import android.app.Dialog
-import android.content.ActivityNotFoundException
+import android.app.Activity
 import android.content.Intent
-import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognizerIntent
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.Gravity
-import android.view.View
-import android.view.Window
-import android.view.WindowManager
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.findit.dashboard.ui.theme.DashboardFindItTheme
 import com.findit.dashboard.viewmodel.DashboardViewModel
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import kotlin.random.Random
 
-class SearchActivity : AppCompatActivity() {
+class SearchActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_AUTO_START_VOICE = "extra_auto_start_voice"
     }
 
     private val viewModel: DashboardViewModel by viewModels()
-    private lateinit var itemAdapter: ItemAdapter
-    private lateinit var etSearchInput: EditText
-    private var allItems: List<DashboardItem> = emptyList()
 
-    private val voiceRecognitionLauncher = registerForActivityResult(
+    private var searchQueryState by mutableStateOf("")
+
+    // Activity Result Launcher for Voice Speech-to-Text
+    private val speechRecognizerLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val spokenText: ArrayList<String>? =
-                result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            val recognizedText = spokenText?.firstOrNull()
-            if (!recognizedText.isNullOrEmpty()) {
-                etSearchInput.setText(recognizedText)
-                etSearchInput.setSelection(recognizedText.length)
-                performSearch(recognizedText)
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spokenText.isNullOrEmpty()) {
+                searchQueryState = spokenText
             }
+        }
+    }
+
+    private fun startVoiceSearch() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Say the name or location of the item...")
+        }
+        try {
+            speechRecognizerLauncher.launch(intent)
+        } catch (_: Exception) {
+            // Fallback if speech recognizer is unavailable on device
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_search)
 
-        etSearchInput = findViewById(R.id.etSearchInput)
-        val rvSearchResults: RecyclerView = findViewById(R.id.rvSearchResults)
-
-        rvSearchResults.layoutManager = GridLayoutManager(this, 2)
-        itemAdapter = ItemAdapter { item ->
-            showItemDetailsDialog(item)
-        }
-        rvSearchResults.adapter = itemAdapter
-
-        viewModel.allItems.observe(this) { items ->
-            allItems = items
-            performSearch(etSearchInput.text.toString())
+        // Check if voice search should auto-launch from MainActivity
+        if (intent?.getBooleanExtra(EXTRA_AUTO_START_VOICE, false) == true) {
+            intent.removeExtra(EXTRA_AUTO_START_VOICE)
+            startVoiceSearch()
         }
 
-        etSearchInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                performSearch(s.toString())
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
+        setContent {
+            DashboardFindItTheme {
+                val allItems by viewModel.itemsFlow.collectAsState(initial = emptyList())
+                var searchQuery by remember { mutableStateOf(searchQueryState) }
 
-        val btnBack: ImageButton = findViewById(R.id.btnBack)
-        btnBack.setOnClickListener {
-            finish()
-        }
+                // Keep local state synced with voice results
+                LaunchedEffect(searchQueryState) {
+                    searchQuery = searchQueryState
+                }
 
-        val btnVoiceSearch: ImageButton = findViewById(R.id.btnVoiceSearch)
-        btnVoiceSearch.setOnClickListener {
-            startVoiceRecognition()
-        }
+                // Filter items by title or location matching the search query
+                val filteredItems = remember(searchQuery, allItems) {
+                    if (searchQuery.isBlank()) {
+                        allItems
+                    } else {
+                        allItems.filter {
+                            it.title.contains(searchQuery, ignoreCase = true) ||
+                                    it.location.contains(searchQuery, ignoreCase = true)
+                        }
+                    }
+                }
 
-        // If launched from the bottom nav mic button, open the voice dialog immediately
-        if (intent.getBooleanExtra(EXTRA_AUTO_START_VOICE, false)) {
-            startVoiceRecognition()
-        }
-    }
+                val gradientColors = listOf(
+                    Color(0xFF102A43), // Dark Navy
+                    Color(0xFF1D5270), // Teal
+                    Color(0xFF388E3C).copy(alpha = 0.15f)
+                )
 
-    private fun performSearch(query: String) {
-        val filteredList = if (query.isEmpty()) {
-            allItems
-        } else {
-            allItems.filter { it.title.contains(query, ignoreCase = true) || it.location.contains(query, ignoreCase = true) }
-        }
-        itemAdapter.submitList(filteredList)
-    }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(brush = Brush.verticalGradient(colors = gradientColors))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp)
+                    ) {
+                        // Top Bar: Back Button + Search Field
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            IconButton(
+                                onClick = { finish() },
+                                modifier = Modifier
+                                    .background(Color.White.copy(alpha = 0.15f), shape = CircleShape)
+                                    .size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
 
-    private fun startVoiceRecognition() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-            )
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak the item name...")
-        }
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it; searchQueryState = it },
+                                placeholder = { Text("Search items or locations...", color = Color.White.copy(alpha = 0.6f)) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.8f))
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(50.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.White.copy(alpha = 0.15f),
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.1f),
+                                    focusedBorderColor = Color.White.copy(alpha = 0.5f),
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                            )
+                        }
 
-        try {
-            voiceRecognitionLauncher.launch(intent)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(
-                this,
-                "Voice recognition is not available on this device",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
+                        Spacer(modifier = Modifier.height(20.dp))
 
-    private fun createBottomSheetDialog(layoutRes: Int): Pair<Dialog, View> {
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+                        Text(
+                            text = if (searchQuery.isBlank()) "All Items (${filteredItems.size})" else "Search Results (${filteredItems.size})",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
 
-        val contentView = layoutInflater.inflate(layoutRes, null)
-        dialog.setContentView(contentView)
+                        // Results Grid or Empty State
+                        if (filteredItems.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No matching items found.",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 15.sp
+                                )
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filteredItems) { item ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(10.dp)) {
+                                            if (!item.photoPath.isNullOrEmpty()) {
+                                                AsyncImage(
+                                                    model = item.photoPath,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(100.dp)
+                                                        .clip(RoundedCornerShape(10.dp)),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                            }
+                                            Text(
+                                                text = item.title,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                color = Color.Black
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = item.location,
+                                                fontSize = 12.sp,
+                                                color = Color.DarkGray
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
-        dialog.window?.let { window ->
-            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT)
-            window.setGravity(Gravity.BOTTOM)
-        }
-        return Pair(dialog, contentView)
-    }
+                        Spacer(modifier = Modifier.height(16.dp))
 
-    private fun addWaveformBars(container: LinearLayout, barCount: Int = 32) {
-        container.removeAllViews()
-        val barWidthPx = (2 * resources.displayMetrics.density).toInt()
-        val barMarginPx = (2 * resources.displayMetrics.density).toInt()
-        repeat(barCount) {
-            val heightDp = Random.nextInt(6, 28)
-            val bar = View(this).apply {
-                setBackgroundColor(Color.parseColor("#1B4965"))
-                layoutParams = LinearLayout.LayoutParams(barWidthPx, (heightDp * resources.displayMetrics.density).toInt()).apply {
-                    marginEnd = barMarginPx
+                        // Bottom Voice Search Button
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            IconButton(
+                                onClick = { startVoiceSearch() },
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .background(Color(0xFF102A43), shape = CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Mic,
+                                    contentDescription = "Use Voice",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Use Voice",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
-            container.addView(bar)
         }
-    }
-
-    private fun loadItemImage(imgView: ImageView, photoPath: String?) {
-        if (!photoPath.isNullOrEmpty()) {
-            val file = File(photoPath)
-            if (file.exists()) {
-                imgView.setImageURI(Uri.fromFile(file))
-            } else {
-                imgView.setImageResource(android.R.drawable.ic_menu_gallery)
-            }
-        } else {
-            imgView.setImageResource(android.R.drawable.ic_menu_gallery)
-        }
-    }
-
-    private fun showItemDetailsDialog(item: DashboardItem) {
-        val (dialog, detailsView) = createBottomSheetDialog(R.layout.dialog_item_details)
-
-        detailsView.findViewById<TextView>(R.id.tvDetailTitle).text = item.title
-        detailsView.findViewById<TextView>(R.id.tvDetailLocation).text = item.location
-        detailsView.findViewById<TextView>(R.id.tvDetailDate).text = item.date
-        loadItemImage(detailsView.findViewById(R.id.imgDetailItem), item.photoPath)
-        addWaveformBars(detailsView.findViewById(R.id.waveformDetail))
-
-        detailsView.findViewById<ImageButton>(R.id.btnCloseDetails).setOnClickListener {
-            dialog.dismiss()
-        }
-
-        detailsView.findViewById<Button>(R.id.btnUpdateItem).setOnClickListener {
-            dialog.dismiss()
-            showUpdateItemDialog(item)
-        }
-
-        dialog.show()
-    }
-
-    private fun showUpdateItemDialog(item: DashboardItem) {
-        val (dialog, updateView) = createBottomSheetDialog(R.layout.dialog_update_item)
-
-        val etItemName: EditText = updateView.findViewById(R.id.etItemName)
-        val etLocation: EditText = updateView.findViewById(R.id.etLocation)
-        etItemName.setText(item.title)
-        etLocation.setText(item.location.removePrefix("Location: "))
-        loadItemImage(updateView.findViewById(R.id.imgUpdateItem), item.photoPath)
-        addWaveformBars(updateView.findViewById(R.id.waveformUpdate), barCount = 22)
-
-        updateView.findViewById<ImageButton>(R.id.btnCloseUpdate).setOnClickListener {
-            dialog.dismiss()
-        }
-
-        updateView.findViewById<LinearLayout>(R.id.btnUpdatePhoto).setOnClickListener {
-            Toast.makeText(this, "Photo update coming soon", Toast.LENGTH_SHORT).show()
-        }
-        updateView.findViewById<ImageButton>(R.id.btnLocationMic).setOnClickListener {
-            Toast.makeText(this, "Voice input coming soon", Toast.LENGTH_SHORT).show()
-        }
-        updateView.findViewById<ImageButton>(R.id.btnPlayUpdate).setOnClickListener {
-            Toast.makeText(this, "Playback coming soon", Toast.LENGTH_SHORT).show()
-        }
-        updateView.findViewById<ImageButton>(R.id.btnEditMessage).setOnClickListener {
-            Toast.makeText(this, "Message edit coming soon", Toast.LENGTH_SHORT).show()
-        }
-
-        updateView.findViewById<Button>(R.id.btnSaveUpdate).setOnClickListener {
-            showConfirmChangesDialog(dialog, item, etItemName, etLocation)
-        }
-
-        dialog.show()
-    }
-
-    private fun showConfirmChangesDialog(
-        updateDialog: Dialog,
-        item: DashboardItem,
-        etItemName: EditText,
-        etLocation: EditText
-    ) {
-        val confirmDialog = Dialog(this)
-        confirmDialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        confirmDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-
-        val confirmView = layoutInflater.inflate(R.layout.dialog_confirm_changes, null)
-        confirmDialog.setContentView(confirmView)
-
-        confirmView.findViewById<Button>(R.id.btnConfirmNo).setOnClickListener {
-            confirmDialog.dismiss()
-        }
-
-        confirmView.findViewById<Button>(R.id.btnConfirmYes).setOnClickListener {
-            val enteredName = etItemName.text.toString().trim()
-            val enteredLocation = etLocation.text.toString().trim()
-
-            if (enteredName.isEmpty() || enteredLocation.isEmpty()) {
-                Toast.makeText(this, "Please fill in name and location", Toast.LENGTH_SHORT).show()
-                confirmDialog.dismiss()
-                return@setOnClickListener
-            }
-
-            val timestamp = SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault()).format(Date())
-            val updatedItem = item.copy(
-                title = enteredName,
-                location = "Location: $enteredLocation",
-                date = timestamp
-            )
-            viewModel.updateItem(updatedItem)
-
-            confirmDialog.dismiss()
-            updateDialog.dismiss()
-            Toast.makeText(this, "Item updated!", Toast.LENGTH_SHORT).show()
-        }
-
-        confirmDialog.show()
     }
 }

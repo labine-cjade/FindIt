@@ -45,6 +45,8 @@ dependencies {
     implementation("androidx.camera:camera-view:${camerax_version}")
 
     // Views DSL Dependencies
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
     implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")

@@ -9,8 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,20 +22,23 @@ import com.findit.dashboard.ui.home.HomeScreen
 import com.findit.dashboard.ui.theme.DashboardFindItTheme
 import com.findit.dashboard.viewmodel.DashboardViewModel
 
-/** The Dashboard screen, now written in Jetpack Compose (see ui/home/HomeScreen.kt). */
+/** The Dashboard screen, written in Jetpack Compose. */
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        const val EXTRA_AUTO_START_VOICE = "extra_auto_start_voice"
+    }
 
     private val viewModel: DashboardViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The blue header runs behind the status bar, so keep the status bar icons white.
+        // Keep status bar transparent over blue/gradient theme
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
 
         setContent {
             DashboardFindItTheme {
                 val items by viewModel.itemsFlow.collectAsState(initial = emptyList())
-                // The item whose details sheet is open (null = no sheet)
                 var detailsItem by remember { mutableStateOf<DashboardItem?>(null) }
 
                 HomeScreen(
@@ -45,7 +48,7 @@ class MainActivity : AppCompatActivity() {
                     },
                     onVoiceSearchClick = {
                         val intent = Intent(this, SearchActivity::class.java)
-                        intent.putExtra(SearchActivity.EXTRA_AUTO_START_VOICE, true)
+                        intent.putExtra(EXTRA_AUTO_START_VOICE, true)
                         startActivity(intent)
                     },
                     onAddClick = {
@@ -55,7 +58,6 @@ class MainActivity : AppCompatActivity() {
                 )
 
                 detailsItem?.let { item ->
-                    // key() gives each item a fresh sheet
                     key(item.id) {
                         ItemCardSheet(
                             initialMode = CardMode.DETAILS,

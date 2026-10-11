@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Dashboard FindIt</string>
+    <string name="onboarding_title_1">Welcome to FindIt</string>
+    <string name="onboarding_subtitle_1">Easily find your items anywhere.</string>
+    <string name="onboarding_title_2">Capture and Save</string>
+    <string name="onboarding_subtitle_2">Take a photo of your items and save their location.</string>
+    <string name="onboarding_title_3">Organize Your Space</string>
+    <string name="onboarding_subtitle_3">Keep track of everything in one place.</string>
+    <string name="onboarding_title_4">Ready to Start?</string>
+    <string name="onboarding_subtitle_4">Join us today and never lose anything again.</string>
+    <string name="get_started">Get Started</string>
+    <string name="next">Next</string>
+</resources>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Camera Hardware Permissions (Required for CameraX) -->
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="true" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Microphone: needed to record the voice message in Add / Update Item -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+
+        <activity android:name="com.findit.dashboard.SearchActivity" />
+        <activity android:name="com.findit.dashboard.TakePictureActivity" />
+        <activity android:name="com.findit.dashboard.LoginActivity" />
+        <activity android:name="com.findit.dashboard.SignUpActivity" />
+        <activity android:name="com.findit.dashboard.MainActivity" />
+
+        <activity
+            android:name="com.findit.dashboard.OnboardingActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

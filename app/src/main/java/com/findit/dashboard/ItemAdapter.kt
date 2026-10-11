@@ -16,8 +16,22 @@ data class DashboardItem(
     val title: String,
     val location: String,
     val date: String,
-    val photoPath: String? = null
+    val photoPath: String? = null,
+    val floor: String = "1st Floor",
+    val audioPath: String? = null
 )
+
+/** The floors shown in the dropdown (Home) and in the camera tabs (Add). */
+object Floors {
+    const val ALL = "All Floors"
+    val choices = listOf(ALL, "1st Floor", "2nd Floor", "3rd Floor")
+    val cameraTabs = listOf("1st Floor", "2nd Floor", "3rd Floor")
+}
+
+// Items keep their location as "Location: xxx". These two helpers add/remove that prefix.
+fun DashboardItem.plainLocation(): String = location.removePrefix("Location: ")
+
+fun locationText(plain: String): String = "Location: $plain"
 
 class ItemAdapter(private val onDetailsClick: (DashboardItem) -> Unit) :
     ListAdapter<DashboardItem, ItemAdapter.ItemViewHolder>(DiffCallback()) {

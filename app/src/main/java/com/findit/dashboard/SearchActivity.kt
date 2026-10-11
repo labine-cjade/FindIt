@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -54,7 +53,8 @@ class SearchActivity : ComponentActivity() {
             val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                 ?.firstOrNull()
             if (!spokenText.isNullOrEmpty()) {
-                searchQueryState = spokenText
+                // Remove words like "where is my" so only the item name is searched
+                searchQueryState = cleanSpokenText(spokenText)
             }
         }
     }
@@ -70,6 +70,32 @@ class SearchActivity : ComponentActivity() {
         } catch (_: Exception) {
             // Fallback if speech recognizer is unavailable on device
         }
+    }
+
+    // Removes common words people say when looking for something
+    // Example: "where is my laptop" -> "laptop"
+    private fun cleanSpokenText(spoken: String): String {
+        val fillerWords = listOf(
+            // English
+            "where", "is", "are", "my", "the", "a", "find", "search", "look", "looking",
+            "for", "locate", "show", "me", "can", "you", "could", "i", "did", "put",
+            "left", "leave", "please",
+            // Tagalog / Taglish
+            "nasaan", "nasan", "asan", "saan", "ang", "yung", "ung", "ko", "mo", "aking",
+            "na", "hanapin", "hanap", "paki", "pakihanap", "nilagay", "nailagay",
+            "nakalagay", "po"
+        )
+
+        val itemName = spoken.lowercase()
+            .replace("?", "")
+            .replace(",", "")
+            .replace(".", "")
+            .split(" ")
+            .filter { it.isNotEmpty() && it !in fillerWords }
+            .joinToString(" ")
+
+        // If nothing is left, use the original text
+        return if (itemName.isEmpty()) spoken else itemName
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
